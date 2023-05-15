@@ -74,8 +74,8 @@ return function (App $app) {
         return $response;
 
     };
-    $app->get('/ident', $handlerIdent);
-    $app->post('/ident', $handlerIdent);
+    $app->get('/ident[/{params:.*}]', $handlerIdent);
+    $app->post('/ident[/{params:.*}]', $handlerIdent);
 
 };
 
