@@ -70,8 +70,15 @@ return function (App $app) {
         file_put_contents($logDir.'/logs.txt', json_encode($logEntry)."\n\n\n\n", FILE_APPEND);
 
         // Отправляем ответ
-        $response->getBody()->write('Ok');
-        return $response;
+        //$response->getBody()->write('Ok');
+
+        $data = array('answer' => 'ok');
+        $payload = json_encode($data);
+
+        $response->getBody()->write($payload);
+        return $response
+               ->withHeader('Content-Type', 'application/json')
+               ->withStatus(200);
 
     };
     $app->get('/ident[/{params:.*}]', $handlerIdent);
