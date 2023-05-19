@@ -9,10 +9,34 @@ use DI\ContainerBuilder;
 use Slim\Factory\AppFactory;
 use Slim\Factory\ServerRequestCreatorFactory;
 
+use Slim\Views\Twig;
+use Slim\Views\TwigMiddleware;
+
 require __DIR__ . '/../vendor/autoload.php';
 
 // Instantiate PHP-DI ContainerBuilder
 $containerBuilder = new ContainerBuilder();
+
+// Определяем сервис db для подключения к базе данных
+$containerBuilder->addDefinitions([
+    'db' => function () {
+        $host = 'localhost';
+        $dbname = 'ellastom34_ella';
+        $username = 'ellastom34_ella';
+        $password = 'rYSxR1nf';
+        $charset = 'utf8mb4';
+        $collate = 'utf8mb4_unicode_ci';
+        $dsn = "mysql:host=$host;dbname=$dbname;charset=$charset";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_PERSISTENT => false,
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES $charset COLLATE $collate"
+        ];
+        return new PDO($dsn, $username, $password, $options);
+    }
+]);
 
 if (false) { // Should be set to true in production
 	$containerBuilder->enableCompilation(__DIR__ . '/../var/cache');
@@ -37,6 +61,11 @@ $container = $containerBuilder->build();
 AppFactory::setContainer($container);
 $app = AppFactory::create();
 $callableResolver = $app->getCallableResolver();
+
+// Instantiate and add Twig middleware
+$container->set('view', function() {
+    return Twig::create('../templates');
+});
 
 // Register middleware
 $middleware = require __DIR__ . '/../app/middleware.php';
