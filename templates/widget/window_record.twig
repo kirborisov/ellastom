@@ -1,0 +1,39 @@
+<div class="overlay"></div> <!-- Задний фон -->
+
+<div class="appointment-box">
+    <span class="close-button">&times;</span> <!-- Крестик для закрытия блока -->
+    <h2>Запись на приём</h2>
+    
+    <div id="appointment-form">
+        <input type="text" id="name" name="ClientFullName" placeholder="Имя" required>
+        <br>
+        <input name="Id" hidden /> 
+        <input name="DateAndTime" hidden /> 
+        <input name="DoctorId" hidden /> 
+        <input type="tel" id="phone" name="ClientPhone" placeholder="+7 (900) 000-00-00" required>
+        <br>
+        <button type="make" class="submit-button">Записаться</button>
+        <br>
+        <br>
+        
+        <label for="agree">Нажимая на кнопку "Записаться", вы соглашаетесь с <a href="https://ellastom.ru/politika/">политикой обработки персональных данных</a></label>
+        <br>
+        
+    </div>
+    
+    <p>Мы свяжемся с вами по телефону для подтверждения записи</p>
+    <p><b>Дата и время:</b> <span id="strDateTime"></span></p>
+    <p><b>Врач:</b> <span id="doctorName"></span></p>
+</div>
+
+<div class="appointment-send">
+    <span class="close-button">&times;</span> <!-- Крестик для закрытия блока -->
+    <h2>Заявка отправлена</h2>
+    
+    
+    <p>Сохраните скриншот.</p>
+    <p>Мы позвоним вам для подтверждения записи</p>
+    <p><b>Дата и время:</b> <span id="strDateTime"></span></p>
+    <p><b>Врач:</b> <span id="doctorName"></span></p>
+</div>
+

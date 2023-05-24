@@ -1,62 +1,7 @@
 {% include 'header.twig' with {'title': 'Запись On-Line'}  %}
 
-<style>
-.date-container {
-    display: flex;
-    overflow: auto;
-    scrollbar-width: none; /* для Firefox */
-    -ms-overflow-style: none;  /* для Internet Explorer 10+ */
-    max-width: 400px;
-    gap: 0px;
-    cursor: pointer;
-}
+<link rel='stylesheet' id='ident-owl-css' href='/css/online_record.css' type='text/css' />
 
-/* для Chrome, Safari и Opera */
-.date-container::-webkit-scrollbar {
-    display: none;
-}
-
-.date-container.active {
-    cursor: grabbing;
-}
-
-.date-item {
-    width: 56.25px;
-    white-space: nowrap;
-    color: grey;
-    background-color: transparent;
-    border: none;
-    font-weight: 400;
-    font-size: 13px;
-    padding: 5px;
-    margin-top: 4px;
-    text-align: center;
-}
-
-.date-item:hover {
-    background-color: #FFF4D8;
-}
-
-.haveFreeTime {
-    color: blue;
-}
-
-div.owl-3 {
-    display: none;
-    min-height: 70px;
-}
-
-div.first_block_doctor {
-    display: block;
-}
-
-@media (min-width: 801px) {
-  div.owl-3 {
-    width: 450px;
-  }
-}
-
-</style>
 </html> 
 <div class="content">
 
@@ -84,15 +29,15 @@ div.first_block_doctor {
                     <div class="owl-3 {% if loop.first %}first_block_doctor{% endif %}" doctor_id="{{doctor.Id}}" date_s="{{ date_s }}">
                         <p class="owl-3">
                             {% if values %}
-                                {% for times in values %}
-                                        {% for time in times %}
-                                            <button class="zapis-online-popup " data-doc="4001" data-set-time="2023-05-24T19:00:00+03" data-time-end="2023-05-24T19:00:00+03">{{ time }}</button>
-                                        {% endfor %}
+                                {% for time in values %}
+                                        <button class="zapis-online-popup " str-date-time="{{time['strDateTime']}}" start-date-time="{{ time['StartDateTime'] }}" doctor_id="{{doctor.Id}}">
+                                            {{ time['start'] }}
+                                        </button>
                                 {% endfor %}
                             {% else %}
                                 На выбранный день нет времени. Ближайшее время приёма:<br />
                                     <span class="go_to_date" doctor_id="{{doctor.Id}}" date_s="{{nearDateOfDoctor[doctor.Id]['date']}}">
-                                        <button class="zapis-online-popup " data-set-time="2023-05-24T19:00:00+03" data-time-end="2023-05-24T19:00:00+03">
+                                        <button class="zapis-online-popup ">
                                             {{nearDateOfDoctor[doctor.Id]['date']}} {{nearDateOfDoctor[doctor.Id]['time']}}
                                         </button>
                                     </span>
@@ -114,40 +59,13 @@ div.first_block_doctor {
     {% endfor %}
 
 </div>
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-
-<script>
-
-$(document).ready(function() {
-
-    $('div.date-item, span.go_to_date').click(function() {
-       let doctorId = $(this).attr('doctor_id') 
-       let date_s = $(this).attr('date_s')
-
-       let curBlock = $(this).closest('div.raspisanie')
-       curBlock.find('div.owl-3').hide()
-       $(`div.owl-3[doctor_id=${doctorId}][date_s="${date_s}"]`).show()
-
-       curBlock.find('div.date-item').css('background', '#fff')
-       blockDate = curBlock.find(`div.date-item[date_s="${date_s}"]`)
-       blockDate.css('background','#FFF4D8')
-
-       if($(this).is('span.go_to_date')) {
-           var container = curBlock.find('div.date-container');    // Контейнер, который будет прокручиваться
-
-           var scrollPosition = blockDate.offset().left - container.offset().left + container.scrollLeft();
-           container.animate({
-            scrollLeft: scrollPosition
-           }, 'slow');
-
-       }
 
 
-    })
 
-});
+{% include 'widget/window_record.twig' %}
 
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dragscroll/0.0.8/dragscroll.min.js"></script>
+
+
+
 
 {% include 'footer.twig' %}

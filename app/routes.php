@@ -44,6 +44,7 @@ return function (App $app) {
     });
 
     function getDoctorsTime($schedule) {
+        setlocale(LC_TIME, 'ru_RU.UTF-8'); // Установить локаль для корректного вывода на русском языке
 
         $doctorsTime = [];
 
@@ -63,6 +64,8 @@ return function (App $app) {
             }
             $scheduleData[$doctorId][$date][] = [
                 'start' => date("H:i", strtotime($item['StartDateTime'])),
+                'StartDateTime' => date("Y-m-d\TH:i:sP", strtotime($item['StartDateTime'])),
+                'strDateTime' => strftime('%e %B %Y %H:%M', strtotime($item['StartDateTime'])),
             ];
         }
 
@@ -98,12 +101,17 @@ return function (App $app) {
     $app->get('/наш-персонал[/{params:.*}]', function ($request, $response, $args) {
         setlocale(LC_TIME, 'ru_RU.UTF-8'); // Установить локаль для корректного вывода на русском языке
 
-        $stmt = $this->get('db')->prepare("SELECT * FROM DoctorSite JOIN Doctors ON DoctorSite.DoctorId = Doctors.Id");
+        $stmt = $this->get('db')->prepare("SELECT Doctors.Id, Doctors.Name, DoctorSite.jobs, image FROM Doctors 
+                                            JOIN DoctorSite ON Doctors.Id = DoctorSite.DoctorId
+                                            ORDER BY DoctorSite.sorted");
         $stmt->execute();
         $doctors = $stmt->fetchAll(PDO::FETCH_ASSOC);
         //
         // Get the data from the database
-        $stmt = $this->get('db')->prepare("SELECT Intervals.StartDateTime, Intervals.IsBusy, Doctors.Id FROM Doctors JOIN Intervals ON Doctors.Id = Intervals.DoctorId WHERE Intervals.StartDateTime >= CURDATE() ORDER BY Intervals.StartDateTime");
+        $stmt = $this->get('db')->prepare("SELECT Intervals.StartDateTime, Intervals.IsBusy, Doctors.Id 
+                                            FROM Doctors JOIN Intervals ON Doctors.Id = Intervals.DoctorId 
+                                            
+                                            WHERE Intervals.StartDateTime >= CURDATE() ORDER BY Intervals.StartDateTime");
         $stmt->execute();
         $schedule = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -119,66 +127,58 @@ return function (App $app) {
     });
 
     $handlerIdent = function (Request $request, Response $response, $args) {
-        $logDir = __DIR__.'/../logs';
-
-        // Получаем данные заголовков
-        $headers = $request->getHeaders();
-        // Получаем тело запроса
-        $body = (string)$request->getBody();
-        // Получаем IP-адрес
-        $ipAddress = $request->getServerParams()['REMOTE_ADDR'];
-        // Получаем текущее время
-        $currentTime = date("Y-m-d H:i:s");
-        // Получаем данные авторизации
-        $authData = $request->getHeaderLine('Authorization');
-
-
-
-        // Если в теле запроса содержится JSON или XML, сохраняем его как файл
-        $fileName = '';
-        $contentType = $request->getHeaderLine('Content-Type');
-        if (strpos($contentType, 'application/json') !== false) {
-            // Записываем JSON в файл
-            $fileName = time().'.json';
-            file_put_contents($logDir.'/json_logs/'.$fileName, $body);
-        } elseif (strpos($contentType, 'application/xml') !== false || strpos($contentType, 'text/xml') !== false) {
-            // Записываем XML в файл
-            $fileName = time().'.xml';
-            file_put_contents($logDir.'/xml_logs/'.$fileName, $body);
-        }
-        
-        // Записываем в логи
-        $logEntry = array(
-            "Time" => $currentTime,
-            "IP Address" => $ipAddress,
-            "Headers" => $headers,
-            "Authorization" => $authData,
-            "Body" => $body,
-            "POST" => $_POST,
-            "GET" => $_GET,
-            "SERVER" => $_SERVER,
-            "fileName" => $fileName,
-        );
-
-        file_put_contents($logDir.'/logs.txt', json_encode($logEntry)."\n\n\n\n", FILE_APPEND);
-
-        // Отправляем ответ
-        //$response->getBody()->write('Ok');
-
-        $data = array('answer' => 'ok');
+        $data = array();
         $payload = json_encode($data);
 
         $response->getBody()->write($payload);
         return $response
                ->withHeader('Content-Type', 'application/json')
                ->withStatus(200);
-
     };
-    //$app->get('/ident[/{params:.*}]', $handlerIdent);
-    //$app->post('/ident[/{params:.*}]', $handlerIdent);
+
+    //$app->get('/ident/GetTickets[/{params:.*}]', $handlerIdent);
+
+    $app->get('/ident/GetTickets[/{params:.*}]', function (Request $request, Response $response, array $args) {
+        $pdo = $this->get('db');
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('SELECT IdUUID as Id,
+                        DATE_FORMAT(CONVERT_TZ(created_at, @@session.time_zone, "+03:00"), "%Y-%m-%dT%H:%i:%s+03:00") as DateAndTime, 
+                        DATE_FORMAT(CONVERT_TZ(DateAndTime, @@session.time_zone, "+03:00"), "%Y-%m-%dT%H:%i:%s+03:00") as PlanStart, 
+                        ClientPhone, ClientFullName, DoctorId, "Онлайн запись" as FormName FROM Appointment WHERE Status = 0');
+            $stmt->execute();
+            $data = $stmt->fetchAll();
+
+            $data = [[
+                  "Id"=>14000,
+                  "DateAndTime"=>"2023-05-24T18:41:15+03:00",
+                  "FormName"=>"Онлайн запись",
+                  "PlanStart"=>"2023-06-13T19:00:00+03:00",
+                  "ClientPhone"=>"+79889860067",
+                  "DoctorId"=>"11",
+                  "DoctorName"=>"Крамаренко Александр Владимирович",
+                  "ClientFullName"=>"Александр Вольф",
+                  "HttpReferer"=>""
+                ]];
+
+            $response->getBody()->write(json_encode($data));
+
+            $stmt = $pdo->prepare('UPDATE Appointment SET Status=1 WHERE Status = 0');
+            $stmt->execute();
+
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollback();
+            $response->getBody()->write("Failed: " . $e->getMessage());
+            return $response->withStatus(500);
+        }
+
+        return $response->withHeader('Content-Type', 'application/json');
+    });
 
 
     $app->post('/ident[/{params:.*}]', function (Request $request, Response $response) {
+
         $data = $request->getBody()->getContents();
         $data = json_decode($data, true);
         
@@ -187,18 +187,6 @@ return function (App $app) {
             $pdo->beginTransaction();
 
             $pdo->exec("DELETE FROM Intervals");
-            $pdo->exec("DELETE FROM Doctors");
-            $pdo->exec("DELETE FROM Branches");
-
-            $stmtDoctor = $pdo->prepare("INSERT INTO Doctors (Id, Name) VALUES (?, ?)");
-            foreach ($data['Doctors'] as $doctor) {
-                $stmtDoctor->execute([$doctor['Id'], $doctor['Name']]);
-            }
-
-            $stmtBranch = $pdo->prepare("INSERT INTO Branches (Id, Name) VALUES (?, ?)");
-            foreach ($data['Branches'] as $branch) {
-                $stmtBranch->execute([$branch['Id'], $branch['Name']]);
-            }
 
             $stmtInterval = $pdo->prepare("INSERT INTO Intervals (DoctorId, BranchId, StartDateTime, LengthInMinutes, IsBusy) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['Intervals'] as $interval) {
@@ -223,13 +211,21 @@ return function (App $app) {
     });
 
 
-    $app->get('/time', function (Request $request, Response $response, array $args) {
+    $app->post('/appointment[/{params:.*}]', function (Request $request, Response $response) {
+        $data = $request->getParsedBody();
 
+        $stmt = $this->get('db')->prepare("INSERT INTO Appointment (IdUUID, DateAndTime, ClientPhone, ClientFullName, DoctorId, Status)
+                                    VALUES( '".$data['Id']."', '".$data['DateAndTime']."', '".$data['ClientPhone']."', '".$data['ClientFullName']."', ".$data['DoctorId'].", 0 )");
+        
+        $stmt->execute();
+        $data = $data;
+        $payload = json_encode($data);
 
-        $response->getBody()->write($html);
-        return $response;
+        $response->getBody()->write($payload);
+        return $response
+               ->withHeader('Content-Type', 'application/json')
+               ->withStatus(200);
     });
-
 
 };
 

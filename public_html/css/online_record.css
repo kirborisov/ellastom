@@ -1,0 +1,110 @@
+/* Стили для расписания */
+.date-container {
+    display: flex;
+    overflow: auto;
+    scrollbar-width: none; /* для Firefox */
+    -ms-overflow-style: none;  /* для Internet Explorer 10+ */
+    max-width: 400px;
+    gap: 0px;
+    cursor: pointer;
+}
+
+/* для Chrome, Safari и Opera */
+.date-container::-webkit-scrollbar {
+    display: none;
+}
+
+.date-container.active {
+    cursor: grabbing;
+}
+
+div.raspisanie {
+  user-select: none;
+}
+
+.date-item {
+    width: 56.25px;
+    white-space: nowrap;
+    color: grey;
+    background-color: transparent;
+    border: none;
+    font-weight: 400;
+    font-size: 13px;
+    padding: 5px;
+    margin-top: 4px;
+    text-align: center;
+}
+
+.date-item:hover {
+    background-color: #FFF4D8;
+}
+
+.haveFreeTime {
+    color: blue;
+}
+
+div.owl-3 {
+    display: none;
+    min-height: 70px;
+}
+
+div.first_block_doctor {
+    display: block;
+}
+
+@media (min-width: 801px) {
+  div.owl-3 {
+    width: 450px;
+  }
+}
+
+
+
+/* Стили для затемненного заднего фона */
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); /* Черный цвет с полупрозрачностью */
+    z-index: 9999; /* Перекрывает другие элементы */
+}
+
+/* Стили для прямоугольника */
+.appointment-box, .appointment-send {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 350px;
+    background-color: white;
+    padding: 20px;
+    text-align: center; /* Центрирование содержимого по горизонтали */
+    z-index: 10000; /* Перекрывает задний фон */
+    background-color: Cornsilk;
+}
+
+/* Стили для кнопки "Записаться" */
+.submit-button {
+    margin-top: 5px;
+}
+
+.appointment-box input {
+    margin: 10px;
+}
+
+.appointment-box button {
+    font-size: 18px;
+}
+
+/* Стили для кнопки "Закрыть" */
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
