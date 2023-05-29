@@ -15,12 +15,7 @@ return function (App $app) {
         return $response;
     });
 
-    /*
-    $app->get('/', function (Request $request, Response $response) {
-        $response->getBody()->write('Hello world!');
-        return $response;
-    });
-    */
+    $app->add(new IdentKeyMiddleware('q5qt8f0te5mfsgerg'));
 
     // Define a route
     $app->get('/', function ($request, $response, $args) {
@@ -141,25 +136,19 @@ return function (App $app) {
     $app->get('/ident/GetTickets[/{params:.*}]', function (Request $request, Response $response, array $args) {
         $pdo = $this->get('db');
         try {
+
+            $queryParams = $request->getQueryParams();
+
+            $dateTimeFrom = $queryParams['dateTimeFrom'] ?? null;
+            $dateTimeTo = $queryParams['dateTimeTo'] ?? null;
+
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare('SELECT IdUUID as Id,
+            $stmt = $pdo->prepare('SELECT id as Id,
                         DATE_FORMAT(CONVERT_TZ(created_at, @@session.time_zone, "+03:00"), "%Y-%m-%dT%H:%i:%s+03:00") as DateAndTime, 
                         DATE_FORMAT(CONVERT_TZ(DateAndTime, @@session.time_zone, "+03:00"), "%Y-%m-%dT%H:%i:%s+03:00") as PlanStart, 
-                        ClientPhone, ClientFullName, DoctorId, "Онлайн запись" as FormName FROM Appointment WHERE Status = 0');
-            $stmt->execute();
+                        ClientPhone, ClientFullName, DoctorId, "Онлайн запись" as FormName FROM Appointment WHERE created_at BETWEEN :dateTimeFrom AND :dateTimeTo');
+            $stmt->execute(['dateTimeFrom' => $dateTimeFrom, 'dateTimeTo' => $dateTimeTo]);
             $data = $stmt->fetchAll();
-
-            $data = [[
-                  "Id"=>14000,
-                  "DateAndTime"=>"2023-05-24T18:41:15+03:00",
-                  "FormName"=>"Онлайн запись",
-                  "PlanStart"=>"2023-06-13T19:00:00+03:00",
-                  "ClientPhone"=>"+79889860067",
-                  "DoctorId"=>"11",
-                  "DoctorName"=>"Крамаренко Александр Владимирович",
-                  "ClientFullName"=>"Александр Вольф",
-                  "HttpReferer"=>""
-                ]];
 
             $response->getBody()->write(json_encode($data));
 
@@ -177,7 +166,7 @@ return function (App $app) {
     });
 
 
-    $app->post('/ident[/{params:.*}]', function (Request $request, Response $response) {
+    $app->post('/ident/PostTimeTable[/{params:.*}]', function (Request $request, Response $response) {
 
         $data = $request->getBody()->getContents();
         $data = json_decode($data, true);
@@ -210,22 +199,150 @@ return function (App $app) {
                ->withStatus(200);
     });
 
+    function sendMail($data) {
+        $subject = 'Стоматология <Элла-стом> новая запись';
+        $message = "Имя: ".$data['ClientFullName']."\nТелефон: ".$data['ClientPhone']."\nДата: ".$data['DateAndTime']."\nДоктор: ".$data['DoctorName'];
+        mail('silvervola@mail.ru', $subject, $message);
+        mail('ella-stom@yandex.ru', $subject, $message);
+        mail('kramarenkokra@mail.ru', $subject, $message);
+    }
+
+    //$app->get('/sendSMS', function (Request $request, Response $response, array $args) {
+    function sendSms($phone) {
+        // если нужно отключить sms валидацию
+        // return false;
+
+        $code = rand(1000, 9999); // генерируем случайный код
+        $message = 'Код для записи: '. $code;
+
+        // Ваши данные для авторизации в сервисе redsms
+        $login = 'ella-stom';
+        $apiKey = 'PJswrjplpkVqcMZnkPKuqOcg';
+        $ts = 'wefwfe^&^7t76T&y';
+        
+        // Сформируем строку запроса
+        $api = 'message';
+        $params = [
+            "from" => "Ella-Stom",
+            "route" => 'sms',
+            "text" => $message,
+            "to" => $phone
+        ];
+        ksort($params);
+        reset($params);
+
+        $token = md5($ts . $apiKey);
+        
+        $params["login"] = $login;
+        $params["ts"] = $ts;
+        $params["secret"] = $token;
+
+        // Отправка SMS
+        $ch = curl_init("https://cp.redsms.ru/api/{$api}");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); 
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+        $output = json_decode(curl_exec($ch), true);
+        curl_close($ch); 
+        
+        if(isset($output['success']) and $output['success'] == true){
+            return $code;
+        } else{ 
+            return false;
+
+        }
+    }
+
+    function checkValidCodeSms($pdo, $phone, $code) {
+        $stmt = $pdo->prepare('SELECT * FROM PhoneVerification WHERE phone = :phone AND code = :code');
+        $stmt->execute(['phone' => $phone, 'code' => $code]);
+        $res = $stmt->fetch();
+        if($res) {
+            $stmt = $pdo->prepare('UPDATE PhoneVerification SET valid=TRUE WHERE id=:id');                                                
+            $stmt->execute(['id' => $res['id']]);
+        }
+
+        return $res;
+    }
+
+    function insertCodeDB($pdo, $phone, $code, $ipAddress) {
+        // Подготавливаем SQL-запрос
+        $stmt = $pdo->prepare('INSERT INTO PhoneVerification (phone, code, ip) VALUES (:phone, :code, :ip)');
+
+        // Задаем значения для параметров запроса
+        $stmt->bindParam(':phone', $phone);
+        $stmt->bindParam(':code', $code);
+        $stmt->bindParam(':ip', $ipAddress);
+
+        // Исполняем запрос
+        $stmt->execute();
+        
+    }
+
+    function checkBadIpAddress($pdo, $ip) {
+        $stmt = $pdo->prepare('SELECT * FROM PhoneVerification WHERE ip = :ip AND created_at >= NOW() - INTERVAL 1 MINUTE');
+        $stmt->execute(['ip' => $ip]);
+        return $stmt->fetch();
+        
+    }
+
+    function checkGoodPhone($pdo, $phone) {
+        $stmt = $pdo->prepare('SELECT * FROM PhoneVerification WHERE phone = :phone AND valid = TRUE');
+        $stmt->execute(['phone' => $phone]);
+        return $stmt->fetch();
+        
+    }
+
+    function addAppointment($pdo, $data) {
+        $stmt = $pdo->prepare("INSERT INTO Appointment (IdUUID, DateAndTime, ClientPhone, ClientFullName, DoctorId, Status)
+                                    VALUES( :Id, :DateAndTime, :ClientPhone, :ClientFullName, :DoctorId, 0 )");
+        $stmt->bindParam(':Id', $data['Id']);
+        $stmt->bindParam(':DateAndTime', $data['DateAndTime']);
+        $stmt->bindParam(':ClientPhone', $data['ClientPhone']);
+        $stmt->bindParam(':ClientFullName', $data['ClientFullName']);
+        $stmt->bindParam(':DoctorId', $data['DoctorId']);
+
+        sendMail($data);
+        $stmt->execute();
+        $res = json_encode(["type"=>"success"]);
+        return $res;
+    
+    }
 
     $app->post('/appointment[/{params:.*}]', function (Request $request, Response $response) {
         $data = $request->getParsedBody();
+        $ipAddress = $request->getServerParams()['REMOTE_ADDR'];
+        $phone = $data['ClientPhone'];
+        $pdo = $this->get('db');
 
-        $stmt = $this->get('db')->prepare("INSERT INTO Appointment (IdUUID, DateAndTime, ClientPhone, ClientFullName, DoctorId, Status)
-                                    VALUES( '".$data['Id']."', '".$data['DateAndTime']."', '".$data['ClientPhone']."', '".$data['ClientFullName']."', ".$data['DoctorId'].", 0 )");
-        
-        $stmt->execute();
-        $data = $data;
-        $payload = json_encode($data);
+        if(checkGoodPhone($pdo, $phone)) {
+            $res = addAppointment($pdo, $data);
 
-        $response->getBody()->write($payload);
+        } elseif(checkBadIpAddress($pdo, $ipAddress) && $data['sended_sms'] == 'no') {
+            $res = json_encode(["type"=>"bad_ip"]);
+        } elseif($data['sended_sms'] == 'no') {
+            $code = sendSms($phone);
+            insertCodeDB($pdo, $phone, $code, $ipAddress);
+            $res = json_encode(["type"=>"sms"]);
+
+        } else {
+            if(checkValidCodeSms($pdo, $phone, $data['code_phone'])) {
+                $res = addAppointment($pdo, $data);
+                    
+            } else {
+                $res = json_encode(["type"=>"bad_code"]);
+            }
+        }
+
+        $response->getBody()->write($res);
+
         return $response
                ->withHeader('Content-Type', 'application/json')
                ->withStatus(200);
+
     });
+
+
 
 };
 

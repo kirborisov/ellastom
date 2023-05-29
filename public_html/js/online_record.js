@@ -48,6 +48,11 @@ function hideAppointment() {
     $('.appointment-box').hide()
     $('.appointment-send').hide()
     $('.overlay').hide()
+    $('p#bad_code').hide()
+    $('p#bad_ip').hide()
+    $('input[name=sended_sms]').val('no')
+    $('input[name=code_phone]').hide()
+    $('input[name=code_phone]').val('')
 
 }
 
@@ -78,7 +83,7 @@ $(document).ready(function() {
     })
 
     function validatePhone(phone) {
-        var phoneRegEx = /^\+7\s\(\d{3}\)\s\d{3}-\d{2}\d{2}$/;
+        var phoneRegEx = /^\+7\d{10}$/;
         return phoneRegEx.test(phone);
     }
 
@@ -90,9 +95,13 @@ $(document).ready(function() {
         formData = {}    
         formData.Id = $('input[name=Id]').val()    
         formData.DoctorId = $('input[name=DoctorId]').val()    
+        formData.DoctorName = $('div.appointment-box span#doctorName').text()
         formData.DateAndTime = $('input[name=DateAndTime]').val()    
         formData.ClientPhone = $('input[name=ClientPhone]').val()    
         formData.ClientFullName = $('input[name=ClientFullName]').val() 
+
+        formData.sended_sms = $('input[name=sended_sms]').val()
+        formData.code_phone = $('input[name=code_phone]').val()
 
         var isValid = true;
 
@@ -121,8 +130,25 @@ $(document).ready(function() {
                 data: formData,    
                 success: function(response) {    
                     // Обработка успешного ответа от сервера    
-                    $('div.appointment-box').hide()    
-                    $('div.appointment-send').show()    
+                    if( response['type'] == 'sms' ) {
+                        $('input#code_phone').show()
+                        $('input[name=sended_sms]').val('yes')
+                        $('p#bad_code').hide()
+                        $('p#bad_ip').hide()
+                    } else if(response['type'] == 'bad_code') {
+                        $('p#bad_ip').hide()
+                        $('p#bad_code').show()
+                    } else if(response['type'] == 'bad_ip') {
+                        $('p#bad_ip').show()
+                    } else {
+                        $('div.appointment-box').hide()    
+                        $('div.appointment-send').show()    
+                        $('p#bad_code').hide()
+                        $('input[name=sended_sms]').val('no')
+                        $('input[name=code_phone]').hide()
+                        $('input[name=code_phone]').val('')
+
+                    }
                     console.log(response);    
                 },    
                 error: function(xhr, status, error) {    
@@ -138,5 +164,5 @@ $(document).ready(function() {
 })
 
 $(document).ready(function() {
-    $('input[name=ClientPhone]').mask('+7 (999) 999-9999'); // Здесь задается формат маски для номера телефона
+    $('input[name=ClientPhone]').mask('+79999999999'); // Здесь задается формат маски для номера телефона
 });

@@ -52,7 +52,7 @@ div.first_block_doctor {
     display: block;
 }
 
-@media (min-width: 801px) {
+@media (min-width: 600px) {
   div.owl-3 {
     width: 450px;
   }
@@ -87,6 +87,12 @@ div.first_block_doctor {
     background-color: Cornsilk;
 }
 
+@media only screen and (max-width: 600px) {
+  .appointment-box, .appointment-send {
+    width: 80%;
+  }
+}
+
 /* Стили для кнопки "Записаться" */
 .submit-button {
     margin-top: 5px;
@@ -107,4 +113,14 @@ div.first_block_doctor {
     right: 10px;
     font-size: 18px;
     cursor: pointer;
+}
+
+input#code_phone {
+    display: none;
+}
+
+.p_error {
+    display: none;
+    color: red;
+    margin: 0;
 }

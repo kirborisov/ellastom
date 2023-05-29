@@ -10,7 +10,11 @@
         <input name="Id" hidden /> 
         <input name="DateAndTime" hidden /> 
         <input name="DoctorId" hidden /> 
-        <input type="tel" id="phone" name="ClientPhone" placeholder="+7 (900) 000-00-00" required>
+        <input type="tel" id="phone" name="ClientPhone" placeholder="+79000000000" required>
+        <input id="code_phone" name="code_phone" placeholder="введите код из sms" required>
+        <p class="p_error" id="bad_code">Невалидный код</p>
+        <p class="p_error" id="bad_ip">Попробуйте записаться через 1 минуту</p>
+        <input name="sended_sms" value="no" hidden>
         <br>
         <button type="make" class="submit-button">Записаться</button>
         <br>
